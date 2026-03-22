@@ -24,7 +24,6 @@ const state = {
   publicView: null,
   mobileMenuOpen: false,
   currentSection: 'identity',
-  mode: 'home',
   authEmail: '',
 };
 
@@ -70,90 +69,6 @@ const BUILDER_SECTIONS = [
   ['magic', 'Magia', '✨'],
   ['review', 'Revisión', '📜'],
 ];
-
-const RANDOM_NAME_PARTS = {
-  first: ['Aelar', 'Kael', 'Mira', 'Thoren', 'Liora', 'Vex', 'Seren', 'Dorian', 'Nyx', 'Brom', 'Ilya', 'Cassian'],
-  last: ['Stormborn', 'Valewood', 'Ironroot', 'Nightbloom', 'Ashfall', 'Ravencrest', 'Dawnriver', 'Blackthorn', 'Embermark', 'Silverfen'],
-};
-
-function randomChoice(list = []) {
-  return list[Math.floor(Math.random() * list.length)];
-}
-function randomSubset(list = [], count = 1) {
-  const pool = [...list];
-  const out = [];
-  while (pool.length && out.length < count) {
-    out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
-  }
-  return out;
-}
-function randomName() {
-  return `${randomChoice(RANDOM_NAME_PARTS.first)} ${randomChoice(RANDOM_NAME_PARTS.last)}`;
-}
-function randomAbilityMethod() {
-  return Math.random() > 0.55 ? 'standard' : 'manual';
-}
-function randomAbilities() {
-  const values = [15,14,13,12,10,8].sort(() => Math.random() - 0.5);
-  return { str: values[0], dex: values[1], con: values[2], int: values[3], wis: values[4], cha: values[5] };
-}
-function generateRandomCharacter() {
-  const cls = randomChoice(CLASSES);
-  const species = randomChoice(SPECIES);
-  const bg = randomChoice(BACKGROUNDS);
-  const method = randomAbilityMethod();
-  const baseAbilities = method === 'manual' ? randomAbilities() : defaultCharacter().baseAbilities;
-  const pattern = Math.random() > 0.5 ? '+2/+1' : '+1/+1/+1';
-  const priorities = randomSubset(bg.abilities, pattern === '+1/+1/+1' ? 3 : 2);
-  const bonusAbilities = computeBonuses(pattern, priorities);
-  const derivedAbilities = deriveAbilities(baseAbilities, bonusAbilities);
-  const subclass = randomChoice(cls.subclasses)?.name || cls.subclasses?.[0]?.name || '';
-  const classSkills = randomSubset(cls.skillChoices.from.filter(s => !(bg.skills || []).includes(s)), cls.skillChoices.count);
-  const weapons = randomSubset(WEAPONS.filter(w => cls.weaponProficiencies.includes(w.category) || cls.weaponProficiencies.includes('Simple') || cls.weaponProficiencies.includes('Martial')).map(w => w.name), Math.min(3, cls.weaponMastery ? 3 : 2));
-  const weaponMasteries = randomSubset(Array.from(new Set(weapons.map(name => WEAPONS.find(w => w.name === name)?.mastery).filter(Boolean))), Math.max(1, cls.weaponMastery || 1)).slice(0, cls.weaponMastery || 0);
-  const spells = cls.casterType === 'none' ? [] : randomSubset(SPELLS.filter(sp => sp.classes.includes(cls.id) && sp.level <= Math.max(1, maxSpellLevel(cls, 3))).map(sp => sp.name), 6);
-  const armorOptions = ARMOR.filter(a => !a.shield);
-  const armor = randomChoice(armorOptions.filter(a => {
-    if (cls.armorProficiencies.includes('Heavy')) return true;
-    if (cls.armorProficiencies.includes('Medium')) return ['Light','Medium','None'].includes(a.type);
-    if (cls.armorProficiencies.includes('Light')) return ['Light','None'].includes(a.type);
-    return a.type === 'None';
-  }))?.name || 'Leather Armor';
-
-  state.currentId = null;
-  state.currentSection = 'identity';
-  state.form = defaultCharacter({
-    name: randomName(),
-    playerName: '',
-    campaign: '',
-    level: Math.ceil(Math.random() * 5),
-    speciesId: species.id,
-    classId: cls.id,
-    subclass,
-    backgroundId: bg.id,
-    abilityMethod: method,
-    originPattern: pattern,
-    asiPriority: priorities,
-    baseAbilities,
-    bonusAbilities,
-    derivedAbilities,
-    feat: bg.feat,
-    languages: Array.from(new Set([...(species.languages || []), ...randomSubset(LANGUAGES, 1)])).slice(0, 4),
-    skills: [...new Set([...(bg.skills || []), ...classSkills])],
-    tools: [...new Set([...(bg.tools || []), ...randomSubset(TOOLS, 1)])],
-    armor,
-    hasShield: cls.armorProficiencies.includes('Shield') && Math.random() > 0.5,
-    weapons,
-    weaponMasteries,
-    equipment: [...new Set([...(cls.equipment || []), ...(bg.equipment || []), ...randomSubset(EQUIPMENT_PACKS, 1)])],
-    spells,
-    notes: 'Generado aleatoriamente. Ajustalo y terminalo a tu gusto.',
-  });
-  recalcForm();
-  state.mode = 'wizard';
-  state.currentTab = 'summary';
-  render();
-}
 
 
 function currentClass() {
@@ -304,7 +219,6 @@ function openCharacter(id) {
   if (!found) return;
   state.currentId = id;
   state.currentSection = 'identity';
-  state.mode = 'sheet';
   state.form = defaultCharacter(found);
   recalcForm();
   render();
@@ -313,7 +227,6 @@ function openCharacter(id) {
 function copyCharacter() {
   state.mobileMenuOpen = false;
   state.currentSection = 'identity';
-  state.mode = 'wizard';
   const duplicate = defaultCharacter({
     ...structuredClone(state.form),
     id: null,
@@ -357,7 +270,6 @@ async function saveCharacter() {
   }
   if (!state.currentId) state.currentId = data.id;
   state.form.public_id = publicId;
-  state.mode = 'sheet';
   toast('Guardado');
   await loadCharacters();
 }
@@ -369,7 +281,6 @@ async function deleteCharacter() {
   const { error } = await supabase.from('characters').delete().eq('id', state.currentId);
   if (error) return toast('No se pudo borrar');
   state.currentId = null;
-  state.mode = 'home';
   state.form = defaultCharacter();
   await loadCharacters();
   toast('Borrado');
@@ -389,7 +300,6 @@ async function logout() {
   await supabase.auth.signOut();
   state.characters = [];
   state.currentId = null;
-  state.mode = 'home';
   state.form = defaultCharacter();
   render();
 }
@@ -469,7 +379,6 @@ function importJson(file) {
       const parsed = JSON.parse(reader.result);
       state.form = defaultCharacter(parsed);
       state.currentId = parsed.id || null;
-      state.mode = 'sheet';
       recalcForm();
       render();
       toast('Importado');
@@ -570,23 +479,7 @@ function renderBuilder() {
     switch (state.currentSection) {
       case 'identity':
         return `
-          <section class="card parchment wizard-cover">
-            <div class="cover-art">${classIcon()}${speciesIcon()}</div>
-            <div>
-              <div class="eyebrow">${escapeHtml(species.name)} · ${escapeHtml(cls.name)} · ${escapeHtml(bg.name)}</div>
-              <h2>${escapeHtml(state.form.name || 'Nuevo personaje')}</h2>
-              <p class="muted">${escapeHtml(species.summary)}</p>
-              <div class="pill-row wizard-pills">
-                <span class="pill">CA ${summary.ac}</span>
-                <span class="pill">HP ${summary.hp}</span>
-                <span class="pill">PB +${summary.pb}</span>
-                <span class="pill">Ini ${signed(summary.initiative)}</span>
-                <span class="pill">PP ${summary.passivePerception}</span>
-                ${summary.spellcasting ? `<span class="pill">DC ${summary.spellcasting.saveDC}</span>` : ''}
-              </div>
-            </div>
-          </section>
-          <section class="card stack wizard-step-card">
+          <section class="card stack wizard-step-card wizard-step-card--first">
             <div class="wizard-headline">
               <div>
                 <div class="eyebrow">Paso 1</div>
@@ -754,7 +647,17 @@ function renderBuilder() {
             <p class="muted">Creación paso a paso, subclases expandidas y buscadores rápidos para magia y equipo.</p>
           </div>
         </div>
-        <div class="wizard-progress"><strong>Paso ${currentStep + 1}/${totalSteps}</strong><span>${BUILDER_SECTIONS[currentStep][1]}</span></div>
+        <div class="wizard-hero-side">
+          <div class="wizard-progress"><strong>Paso ${currentStep + 1}/${totalSteps}</strong><span>${BUILDER_SECTIONS[currentStep][1]}</span></div>
+          <div class="wizard-kpi-strip">
+            <span class="wizard-kpi">CA ${summary.ac}</span>
+            <span class="wizard-kpi">HP ${summary.hp}</span>
+            <span class="wizard-kpi">PB +${summary.pb}</span>
+            <span class="wizard-kpi">Ini ${signed(summary.initiative)}</span>
+            <span class="wizard-kpi">PP ${summary.passivePerception}</span>
+            ${summary.spellcasting ? `<span class="wizard-kpi">DC ${summary.spellcasting.saveDC}</span>` : ''}
+          </div>
+        </div>
       </section>
       <nav class="wizard-stepper">
         ${BUILDER_SECTIONS.map(([id, label, icon], index) => `<button class="${state.currentSection === id ? 'active' : ''}" data-section-tab="${id}"><span>${icon}</span><small>${label}</small><b>${index + 1}</b></button>`).join('')}
@@ -884,101 +787,6 @@ function renderSummary() {
   </section>`;
 }
 
-
-function renderHome() {
-  const status = authStatus();
-  const recent = [...state.characters].slice(0, 6);
-  return `
-    <main class="app-home">
-      <section class="home-hero card parchment">
-        <div class="home-hero-copy">
-          <div class="eyebrow">DnD Forge PRO</div>
-          <h1>Forjá tu personaje como si fuera una app.</h1>
-          <p class="muted">Creación separada del resto, wizard full-screen, subclases visuales y guardado online con Supabase.</p>
-          <div class="home-actions">
-            <button data-action="new-wizard">Crear personaje</button>
-            <button data-action="random-character" class="ghost">Generar random</button>
-            ${state.currentId ? '<button data-action="resume-sheet" class="ghost">Seguir último</button>' : ''}
-          </div>
-        </div>
-        <div class="home-status card ${status.kind}">
-          <div class="eyebrow">Estado</div>
-          <strong>${escapeHtml(status.title)}</strong>
-          <p>${escapeHtml(status.text)}</p>
-          <span class="status-chip ${status.kind}">${escapeHtml(status.cta)}</span>
-        </div>
-      </section>
-
-      <section class="home-grid">
-        <section class="card stack">
-          <div class="row between center"><h3>Cuenta</h3>${state.session ? '<button data-action="logout" class="ghost">Cerrar sesión</button>' : ''}</div>
-          ${!hasSupabaseConfig ? saveEnvHint() : ''}
-          ${state.session ? `<div class="callout ok"><strong>${escapeHtml(state.session.user.email || 'Usuario')}</strong><p>Sincronización activa para guardar, duplicar y compartir.</p></div>` : `
-            <label>Email<input id="email-login" type="email" placeholder="tu@email.com" value="${escapeHtml(state.authEmail || '')}" /></label>
-            <button data-action="login">Entrar con magic link</button>
-          `}
-        </section>
-
-        <section class="card stack">
-          <div class="row between center"><h3>Biblioteca</h3><span class="pill">${state.characters.length} personaje/s</span></div>
-          <input id="search-character" placeholder="Buscar personaje" value="${escapeHtml(state.filters.search)}" />
-          <div class="home-character-list">
-            ${recent.filter(c => (c.name || '').toLowerCase().includes(state.filters.search.toLowerCase())).map(c => `
-              <button class="character-row" data-open="${c.id}">
-                <span class="character-row-icon">${CLASS_ICONS[c.classId] || '⚔️'}</span>
-                <span><strong>${escapeHtml(c.name)}</strong><small>${escapeHtml((CLASSES.find(x => x.id === c.classId)?.name) || c.classId)} · lvl ${c.level}</small></span>
-                <span class="chev">→</span>
-              </button>`).join('') || '<p class="muted">Todavía no guardaste personajes. Podés empezar desde cero o generar uno random.</p>'}
-          </div>
-        </section>
-      </section>
-    </main>`;
-}
-
-function renderSheetView() {
-  const cls = currentClass();
-  const species = currentSpecies();
-  const bg = currentBackground();
-  const summary = currentSummary();
-  return `
-    <main class="sheet-screen">
-      <section class="sheet-topbar card parchment">
-        <button data-action="go-home" class="ghost">← Inicio</button>
-        <div class="sheet-topbar-main">
-          <div class="eyebrow">${escapeHtml(species.name)} · ${escapeHtml(cls.name)} · ${escapeHtml(bg.name)}</div>
-          <h2>${classIcon()} ${escapeHtml(state.form.name || 'Nuevo personaje')}</h2>
-        </div>
-        <div class="sheet-topbar-actions">
-          <button data-action="edit-character" class="ghost">Editar</button>
-          <button data-action="save">Guardar</button>
-        </div>
-      </section>
-      <section class="sheet-kpis">
-        <div class="sheet-kpi card"><span>CA</span><strong>${summary.ac}</strong></div>
-        <div class="sheet-kpi card"><span>HP</span><strong>${summary.hp}</strong></div>
-        <div class="sheet-kpi card"><span>PB</span><strong>+${summary.pb}</strong></div>
-        <div class="sheet-kpi card"><span>Ini</span><strong>${signed(summary.initiative)}</strong></div>
-      </section>
-      <section class="tabs desktop-tabs sheet-tabs">
-        ${[
-          ['summary', 'Ficha'],
-          ['progression', 'Progresión'],
-          ['builder', 'Editar'],
-        ].map(([id, label]) => `<button class="${state.currentTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('')}
-      </section>
-      ${state.currentTab === 'summary' ? renderSummary() : ''}
-      ${state.currentTab === 'progression' ? renderProgression() : ''}
-      ${state.currentTab === 'builder' ? renderBuilder() : ''}
-      <nav class="mobile-bottom-nav mobile-only sheet-bottom-nav">
-        ${[
-          ['summary', 'Ficha'],
-          ['progression', 'Nivel'],
-          ['builder', 'Editar'],
-        ].map(([id, label]) => `<button class="${state.currentTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('')}
-      </nav>
-    </main>`;
-}
-
 function renderPublic() {
   const ch = state.publicView;
   const classDef = CLASSES.find(c => c.id === ch.classId) || CLASSES[0];
@@ -1036,21 +844,134 @@ function render() {
     app.innerHTML = `<div class="loading-screen"><div class="spinner"></div><p>Cargando DnD Forge PRO…</p></div>`;
     return;
   }
+  const cls = currentClass();
+  const bg = currentBackground();
+  const filtered = state.characters.filter(c => (c.name || '').toLowerCase().includes(state.filters.search.toLowerCase()));
+  app.innerHTML = `
+    <div class="layout">
+      <aside class="sidebar ${state.mobileMenuOpen ? 'open' : ''}">
+        <div class="sidebar-inner">
+          <div class="row between center mobile-sidebar-head">
+            <div class="brand">
+              <h1>DnD Forge PRO</h1>
+              <p class="muted">Builder 2024 online para Netlify + Supabase.</p>
+            </div>
+            <button data-action="close-menu" class="ghost mobile-only">Cerrar</button>
+          </div>
 
-  let html = '';
-  if (state.mode === 'home') html = renderHome();
-  else if (state.mode === 'wizard') html = `
-    <main class="wizard-screen">
-      <section class="wizard-screen-topbar card parchment">
-        <button data-action="go-home" class="ghost">← Inicio</button>
-        <div class="wizard-screen-title"><div class="eyebrow">Creación de personaje</div><strong>${escapeHtml(state.form.name || 'Nuevo personaje')}</strong></div>
-        <div class="wizard-screen-actions"><button data-action="random-character" class="ghost">Random</button><button data-action="save">Guardar</button></div>
-      </section>
-      ${renderBuilder()}
-    </main>`;
-  else html = renderSheetView();
+          ${state.toast ? `<div class="toast">${escapeHtml(state.toast)}</div>` : ''}
+          ${saveEnvHint()}
 
-  app.innerHTML = `${state.toast ? `<div class="floating-toast">${escapeHtml(state.toast)}</div>` : ''}${html}`;
+          <section class="card stack auth-card">
+            <div class="row between center">
+              <h3>Cuenta</h3>
+              <span class="status-chip ${authStatus().kind}">${authStatus().cta}</span>
+            </div>
+            <div class="callout compact ${authStatus().kind}">
+              <strong>${authStatus().title}</strong>
+              <p>${authStatus().text}</p>
+            </div>
+            ${state.session ? `
+              <div class="callout compact">
+                <strong>${escapeHtml(state.session.user.email || 'Usuario')}</strong>
+              </div>
+              <button data-action="logout" class="ghost">Cerrar sesión</button>
+            ` : `
+              <label>Email<input id="email-login" type="email" placeholder="tu@email.com" value="${escapeHtml(state.authEmail)}" /></label>
+              <button data-action="login">Entrar con magic link</button>
+            `}
+          </section>
+
+          <section class="card stack">
+            <div class="row between center">
+              <h3>Personajes</h3>
+              <button data-action="new">Nuevo</button>
+            </div>
+            <input id="search-character" placeholder="Buscar personaje" value="${escapeHtml(state.filters.search)}" />
+            <div class="list scroll-y mobile-character-list">
+              ${filtered.map(c => `
+                <button class="list-item ${c.id === state.currentId ? 'active' : ''}" data-open="${c.id}">
+                  <strong>${escapeHtml(c.name)}</strong>
+                  <span>${escapeHtml(c.classId)} · lvl ${c.level}</span>
+                </button>
+              `).join('') || '<p class="muted">No hay personajes todavía.</p>'}
+            </div>
+          </section>
+
+          <section class="card stack">
+            <h3>Acciones</h3>
+            <div class="grid-2 mobile-actions">
+              <button data-action="save">Guardar</button>
+              <button data-action="duplicate" class="ghost">Duplicar</button>
+              <button data-action="share" class="ghost">Share link</button>
+              <button data-action="pdf" class="ghost">Imprimir/PDF</button>
+              <button data-action="export" class="ghost">Export JSON</button>
+              <button data-action="import" class="ghost">Import JSON</button>
+              <button data-action="delete" class="danger">Borrar</button>
+              <input id="import-json" type="file" hidden accept="application/json" />
+            </div>
+            <label class="toggle"><input id="public-toggle" type="checkbox" ${state.form.is_public ? 'checked' : ''} /> Personaje público</label>
+          </section>
+
+          <section class="card stack">
+            <h3>Ayuda rápida</h3>
+            <div class="callout compact">
+              <p><strong>Species:</strong> ${currentSpecies().name}</p>
+              <p><strong>Clase:</strong> ${cls.name}</p>
+              <p><strong>Background:</strong> ${bg.name}</p>
+              <p><strong>Feat:</strong> ${state.form.feat}</p>
+            </div>
+          </section>
+        </div>
+      </aside>
+
+      <main class="main">
+        <section class="card parchment mobile-topbar">
+          <div class="row between center gap-sm">
+            <div>
+              <div class="eyebrow">${escapeHtml(currentSpecies().name)} · ${escapeHtml(cls.name)}</div>
+              <strong>${escapeHtml(state.form.name || 'Nuevo personaje')}</strong>
+            </div>
+            <div class="row gap-sm">
+              <button data-action="toggle-menu" class="ghost">Menú</button>
+              <button data-action="save">Guardar</button>
+            </div>
+          </div>
+          <div class="mobile-stat-strip">
+            <span>CA ${currentSummary().ac}</span>
+            <span>HP ${currentSummary().hp}</span>
+            <span>PB +${currentSummary().pb}</span>
+            <span>Ini ${signed(currentSummary().initiative)}</span>
+          </div>
+          <div class="mobile-progress-line">
+            <span>${BUILDER_SECTIONS.find(([id]) => id === state.currentSection)?.[2] || '🧙'} ${BUILDER_SECTIONS.find(([id]) => id === state.currentSection)?.[1] || 'Identidad'}</span>
+            <small>Paso ${Math.max(1, BUILDER_SECTIONS.findIndex(([id]) => id === state.currentSection) + 1)} / ${BUILDER_SECTIONS.length}</small>
+          </div>
+        </section>
+
+        <section class="tabs desktop-tabs">
+          ${[
+            ['builder', 'Builder'],
+            ['progression', 'Progresión'],
+            ['summary', 'Resumen'],
+          ].map(([id, label]) => `<button class="${state.currentTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('')}
+        </section>
+
+        ${state.currentTab === 'builder' ? renderBuilder() : ''}
+        ${state.currentTab === 'progression' ? renderProgression() : ''}
+        ${state.currentTab === 'summary' ? renderSummary() : ''}
+
+        <nav class="mobile-bottom-nav mobile-only">
+          ${[
+            ['builder', 'Builder'],
+            ['progression', 'Nivel'],
+            ['summary', 'Ficha'],
+          ].map(([id, label]) => `<button class="${state.currentTab === id ? 'active' : ''}" data-tab="${id}">${label}</button>`).join('')}
+        </nav>
+      </main>
+    </div>
+    ${state.mobileMenuOpen ? '<div class="mobile-backdrop mobile-only" data-action="close-menu"></div>' : ''}
+  `;
   bindEvents();
   restoreFocusState(focusState);
 }
@@ -1157,10 +1078,8 @@ function bindEvents() {
           await logout();
           break;
         case 'new':
-        case 'new-wizard':
           state.currentId = null;
           state.currentSection = 'identity';
-          state.mode = 'wizard';
           state.form = defaultCharacter();
           state.mobileMenuOpen = false;
           render();
@@ -1168,24 +1087,6 @@ function bindEvents() {
         case 'toggle-menu':
           state.mobileMenuOpen = true;
           render();
-          break;
-        case 'go-home':
-          state.mode = 'home';
-          state.mobileMenuOpen = false;
-          render();
-          break;
-        case 'resume-sheet':
-          if (state.currentId) state.mode = 'sheet';
-          else if (state.characters[0]) openCharacter(state.characters[0].id);
-          render();
-          break;
-        case 'edit-character':
-          state.mode = 'wizard';
-          state.currentTab = 'builder';
-          render();
-          break;
-        case 'random-character':
-          generateRandomCharacter();
           break;
         case 'close-menu':
           state.mobileMenuOpen = false;
