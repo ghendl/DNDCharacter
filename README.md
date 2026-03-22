@@ -40,3 +40,12 @@ App estática lista para Netlify con guardado online en Supabase.
 ## Nota
 
 La app usa los manuales como guía de estructura y resume reglas y rasgos en formato funcional para creación de personajes. No reproduce texto extenso del libro.
+
+
+## Cambios de esta versión
+
+- Home separada del creador
+- Wizard full-screen para creación
+- Vista de ficha separada
+- Generador random de personaje
+- Mejoras mobile y navegación tipo app
