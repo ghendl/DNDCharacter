@@ -1240,3 +1240,167 @@ select option { background: #1a1008 }
   input,select,textarea{min-height:50px;padding:12px 14px}
   .wizard-step-card{padding:14px}
 }
+
+
+/* ── Mobile density fix: truly shorter wizard ───────────────── */
+@media (max-width: 900px) {
+  body { padding-bottom: 86px }
+  .main { padding: 0 8px 0 }
+
+  /* Keep the cloud/sidebar stuff out of the way while creating */
+  .sidebar:not(.open) { display: none }
+
+  /* Make the wizard feel like a single-screen flow */
+  .wizard-shell {
+    gap: 10px;
+    padding-top: 6px;
+  }
+  .wizard-hero {
+    display: none !important;
+  }
+  .wizard-stepper {
+    position: sticky;
+    top: 72px;
+    z-index: 18;
+    margin: 0;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid #3f2a15;
+    background: linear-gradient(180deg, rgba(18,12,7,.98), rgba(12,8,5,.96));
+    box-shadow: 0 8px 24px rgba(0,0,0,.28);
+  }
+  .wizard-stepper button {
+    min-width: 88px;
+    min-height: 58px;
+    padding: 8px 8px;
+    gap: 2px;
+  }
+  .wizard-stepper button span { font-size: 1rem }
+  .wizard-stepper button small { font-size: .62rem; line-height: 1.05; }
+  .wizard-stepper button b { font-size: .64rem }
+
+  .wizard-step-card {
+    padding: 14px 14px 18px;
+    gap: 12px;
+    border-radius: 18px;
+  }
+  .wizard-headline {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+  .wizard-headline h3 {
+    font-size: 1.15rem;
+    line-height: 1.15;
+  }
+  .wizard-headline .status-chip {
+    margin-left: auto;
+    flex: 0 0 auto;
+    font-size: .68rem;
+    padding: 7px 10px;
+  }
+
+  /* Less vertical bulk in summary bits */
+  .summary-grid,
+  .abilities-grid,
+  .stats-grid,
+  .grid-2,
+  .grid-3 {
+    gap: 10px !important;
+  }
+  .summary-stat,
+  .callout.compact,
+  .feature-card,
+  .mini-field,
+  .choice-tile {
+    padding: 10px !important;
+  }
+
+  label {
+    gap: 4px;
+    font-size: .72rem;
+  }
+  input, select, textarea {
+    min-height: 44px;
+    padding: 10px 12px;
+    border-radius: 12px;
+  }
+  textarea { min-height: 88px }
+
+  .chooser { gap: 8px }
+  .check-grid { gap: 8px }
+  .check-pill { padding: 10px 11px }
+
+  /* Make the footer always visible but lighter */
+  .wizard-footer-nav {
+    left: 8px;
+    right: 8px;
+    bottom: 8px;
+    padding: 8px;
+    gap: 8px;
+    border-radius: 16px;
+    background: linear-gradient(180deg, rgba(17,11,7,.97), rgba(10,7,5,.97));
+  }
+  .wizard-footer-nav button {
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: .76rem;
+  }
+
+  /* Quick stats become compact chips instead of big blocks */
+  .mobile-stat-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 8px;
+  }
+  .mobile-stat-strip span,
+  .pill {
+    min-height: 0;
+    padding: 7px 10px;
+    border-radius: 999px;
+    font-size: .74rem;
+    width: auto;
+    flex: 0 0 auto;
+  }
+
+  /* Hide extra decorative/duplicate content that makes mobile long */
+  .hero-card,
+  .wizard-cover,
+  .callout.info .feature-timeline {
+    margin-bottom: 0;
+  }
+}
+
+@media (max-width: 520px) {
+  .mobile-topbar {
+    padding: 10px 10px 8px;
+  }
+  .mobile-topbar strong { font-size: .92rem }
+  .mobile-topbar .row.gap-sm button {
+    min-width: 72px;
+    padding: 10px 12px;
+  }
+  .wizard-stepper {
+    top: 64px;
+    padding: 6px;
+  }
+  .wizard-stepper button {
+    min-width: 74px;
+    min-height: 52px;
+    border-radius: 14px;
+  }
+  .wizard-stepper button small {
+    display: none;
+  }
+  .wizard-stepper button b {
+    display: block;
+  }
+  .wizard-step-card {
+    padding: 12px 12px 16px;
+  }
+  .wizard-footer-nav {
+    grid-template-columns: 1fr 1fr;
+  }
+}
